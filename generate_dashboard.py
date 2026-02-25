@@ -336,19 +336,10 @@ class DashboardGenerator:
     <style>
         :root {{--deep-ocean:#0B1D3A;--mid-ocean:#133B5C;--reef-teal:#1B998B;--lagoon:#2EC4B6;--sand:#F4E8C1;--coral:#FF6B6B;--sunset:#F77F00;--plumeria:#FFD166;--card-bg:rgba(255,255,255,0.92);--card-border:rgba(27,153,139,0.15);--shadow:0 4px 24px rgba(11,29,58,0.08);--shadow-hover:0 8px 40px rgba(11,29,58,0.14);--radius:16px;--radius-sm:10px;}}
         *{{margin:0;padding:0;box-sizing:border-box;}}
-
-        /* UPDATED: BLACK BACKGROUND + remove header wave look */
         body{{font-family:'IBM Plex Sans',sans-serif;background:#000;color:#fff;min-height:100vh;}}
-
-        /* Main wrapper no longer paints a light background */
         .main-bg{{background:transparent;padding:2.5rem 1.5rem 4rem;}}
-
         .container{{max-width:1360px;margin:0 auto;}}
-
-        /* Remove the negative lift that was designed for hero/wave */
         .stats-row{{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-top:0;position:relative;z-index:2;margin-bottom:2rem;}}
-
-        /* Dark theme cards */
         :root{{--card-bg:rgba(20,20,20,0.92);--card-border:rgba(255,255,255,0.08);--shadow:0 4px 24px rgba(0,0,0,0.35);--shadow-hover:0 8px 40px rgba(0,0,0,0.55);}}
 
         .stat-card{{background:var(--card-bg);backdrop-filter:blur(12px);border:1px solid var(--card-border);border-radius:var(--radius);padding:1.3rem 1.5rem;box-shadow:var(--shadow);transition:transform .25s,box-shadow .25s;}}
