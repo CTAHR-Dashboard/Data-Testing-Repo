@@ -17,6 +17,7 @@ import numpy as np
 import logging
 from pathlib import Path
 from datetime import datetime
+from config import getConfig
 
 
 class CommercialDataCleaner:
@@ -111,7 +112,7 @@ class CommercialDataCleaner:
 
         required_columns = ['year', 'area_id', 'county','species_group', 'ecosystem_type', 'exchange_value']
 
-        optional_columns = ['county_olelo', 'exchange_value_formatted']
+        optional_columns = ['county_olelo', 'island_olelo', 'exchange_value_formatted']
 
         missing_required = [col for col in required_columns if col not in self.data.columns]
 
@@ -282,6 +283,68 @@ class CommercialDataCleaner:
 
 #*****************************************************************
 #
+#  Function name: deriveIslandFromAreaId
+#
+#  DESCRIPTION:   Maps each row's area_id to an island name using the DAR
+#                 statistical area lookup in config. Also adds the island_olelo
+#                 column so the commercial schema matches the non commercial
+#                 output. Logs any area_ids that do not appear in the lookup.
+#
+#  Parameters:    None
+#
+#  Return values: None (modifies self.data in place)
+#
+#*****************************************************************
+
+    def deriveIslandFromAreaId(self):
+        logging.info('Deriving island from area_id ')
+
+        cfg = getConfig()
+        area_map = cfg.AREA_ID_TO_ISLAND
+        olelo_map = cfg.ISLAND_OLELO
+
+        self.data['island'] = self.data['area_id'].map(area_map)
+
+        unmapped = self.data[self.data['island'].isnull()]['area_id'].unique()
+        if len(unmapped) > 0:
+            logging.warning(f'Unmapped area_ids (no island assigned): {sorted(unmapped)}')
+
+        self.data['island_olelo'] = self.data['island'].map(olelo_map)
+
+        island_counts = self.data['island'].value_counts().to_dict()
+        logging.info(f'Island derivation complete: {island_counts}')
+
+
+#*****************************************************************
+#
+#  Function name: validateIslands
+#
+#  DESCRIPTION:   Checks derived island names against the expected set of six
+#                 main Hawaiian islands. Logs any unexpected values so mapping
+#                 errors can be traced back to the area_id lookup.
+#
+#  Parameters:    None
+#
+#  Return values: None
+#
+#*****************************************************************
+
+    def validateIslands(self):
+        logging.info('Validating island names ')
+
+        expected_islands = ['Hawaii', 'Kauai', 'Lanai', 'Maui', 'Molokai', 'Oahu']
+
+        unique_islands = self.data['island'].dropna().unique()
+        unexpected = [i for i in unique_islands if i not in expected_islands]
+
+        if unexpected:
+            logging.warning(f'Unexpected island names: {unexpected}')
+        else:
+            logging.info(f'All islands valid: {sorted(unique_islands)}')
+
+
+#*****************************************************************
+#
 #  Function name: removeNullValues
 #
 #  DESCRIPTION:   Removes rows where exchange_value is null/NaN because they cannot be
@@ -369,7 +432,7 @@ class CommercialDataCleaner:
 
         logging.info('Removing display-only columns ')
 
-        display_columns = ['county_olelo', 'exchange_value_formatted']
+        display_columns = ['island_olelo', 'county_olelo', 'exchange_value_formatted']
         columns_to_drop = [col for col in display_columns if col in self.data.columns]
 
         if columns_to_drop:
@@ -404,11 +467,13 @@ class CommercialDataCleaner:
             'rows_removed': self.raw_row_count - len(self.data),
             'date_range': {'min_year': int(self.data['year'].min()),'max_year': int(self.data['year'].max())},
             'total_exchange_value': float(self.data['exchange_value'].sum()),
+            'unique_islands': sorted(self.data['island'].dropna().unique().tolist()),
             'unique_counties': sorted(self.data['county'].unique().tolist()),
             'unique_species_groups': sorted(self.data['species_group'].unique().tolist()),
             'unique_ecosystem_types': sorted(self.data['ecosystem_type'].unique().tolist()),
             'unique_area_ids': sorted([int(x) for x in self.data['area_id'].unique().tolist() if pd.notna(x)]),
             'records_by_year': self.data.groupby('year').size().to_dict(),
+            'records_by_island': self.data.groupby('island').size().to_dict(),
             'total_value_by_year': self.data.groupby('year')['exchange_value'].sum().to_dict()
         }
 
@@ -435,7 +500,16 @@ class CommercialDataCleaner:
         timestamp = datetime.now().strftime('%Y%m%d')
         output_file = self.output_dir / f'cleaned_commercial_{timestamp}.csv'
 
-        self.data.to_csv(output_file, index=False)
+        preferred_order = [
+            'year', 'island', 'island_olelo', 'county', 'county_olelo',
+            'species_group', 'ecosystem_type', 'exchange_value',
+            'exchange_value_formatted', 'area_id'
+        ]
+        columns = [c for c in preferred_order if c in self.data.columns]
+        remaining = [c for c in self.data.columns if c not in columns]
+        export_data = self.data[columns + remaining]
+
+        export_data.to_csv(output_file, index=False)
         self.cleaned_row_count = len(self.data)
 
         logging.info(f'Exported {self.cleaned_row_count:,} rows to {output_file}')
@@ -472,6 +546,9 @@ class CommercialDataCleaner:
         self.validateEcosystemTypes()
         self.validateSpeciesGroups()
         self.validateCounties()
+
+        self.deriveIslandFromAreaId()
+        self.validateIslands()
 
         self.removeNullValues()
 

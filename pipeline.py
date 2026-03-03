@@ -261,6 +261,7 @@ class FisheriesCleaningPipeline:
             logging.info(f"  Date Range:  {comm_summary['date_range']['min_year']}-{comm_summary['date_range']['max_year']}")
             logging.info(f"  Total Value: ${comm_summary['total_exchange_value']:,.2f}")
             logging.info(f"  Counties:    {len(comm_summary['unique_counties'])}")
+            logging.info(f"  Islands:     {len(comm_summary['unique_islands'])}")
             logging.info(f"  Species:     {len(comm_summary['unique_species_groups'])}")
             logging.info(f"  DAR Areas:   {len(comm_summary['unique_area_ids'])}")
         else:
